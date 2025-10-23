@@ -23,21 +23,50 @@ const renderTodos = () => {
     });
 };
 
-// Function to add todos
-const addTodo = () => {
+// Function to get todos by input field
+const getTodosByInput = () => {
     const todoText = todoInput.value.trim();
     if (todoText !== '') {
-        todos.push(todoText.trim());
+        return [todoText];
+    }
+    return [];
+};
+
+// Function to add todos
+const addTodo = () => {
+    const todosToAdd = getTodosByInput();
+    if (todosToAdd.length > 0) {
+        todos.push(...todosToAdd);
         todoInput.value = ''; // reinitialize input field
         renderTodos();
     }
 }
 
-// FUnction to delete todos
+// Function to delete todos
 const deleteTodo = (index) => {
     todos.splice(index, 1);
     renderTodos();
 };
 
-// Event listener
-addBtn.addEventListener('click', addTodo);
+// Fetch Todos from API
+const fetchTodos = async () => {
+    try {
+        const response = await fetch('https://dummyjson.com/todos');
+        const data = await response.json();
+        // Extract just the todo text from each todo object
+        todos = data.todos.map(todoItem => todoItem.todo);
+        console.log("Todos fetched successfully:", todos);
+        renderTodos();
+    } catch (error) {
+        console.error("Error fetching todos:", error);
+    }
+};
+
+// Main function
+const main = async () => {
+    addBtn.addEventListener('click', addTodo);
+    await fetchTodos();
+};
+
+// Call main function when page loads
+main();
