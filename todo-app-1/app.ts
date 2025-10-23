@@ -13,8 +13,16 @@ interface ApiResponse {
     limit: number;
 }
 
+// Local todo interface for our app
+interface LocalTodo {
+    text: string;
+    completed: boolean;
+    id: number;
+}
+
 // Initialize todos array with proper typing
-let todosArray: string[] = [];
+let todosArray: LocalTodo[] = [];
+let nextId = 1;
 
 // DOM elements with proper type assertions and null checks
 const todoInputElement = document.getElementById('todo-input') as HTMLInputElement;
@@ -26,27 +34,58 @@ const renderTodoList = (): void => {
     if (!todoListElement) return;
     
     todoListElement.innerHTML = '';
-    todosArray.forEach((todo: string, index: number) => {
+    todosArray.forEach((todo: LocalTodo, index: number) => {
         const listItem: HTMLLIElement = document.createElement('li');
-        listItem.textContent = todo;
-
-        // Create delete button
-        const deleteButton: HTMLButtonElement = document.createElement('button');
-        deleteButton.textContent = 'Delete';
-        deleteButton.addEventListener('click', () => removeTodo(index));
-
-        listItem.appendChild(deleteButton);
+        
+        // Create checkbox
+        const checkbox: HTMLInputElement = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = todo.completed;
+        checkbox.addEventListener('change', () => handleTodoCompletion(index, checkbox.checked));
+        
+        // Create text span
+        const textSpan: HTMLSpanElement = document.createElement('span');
+        textSpan.textContent = todo.text;
+        
+        // Apply completed styling if needed
+        if (todo.completed) {
+            textSpan.style.color = 'gray';
+            textSpan.style.fontStyle = 'italic';
+            textSpan.style.textDecoration = 'line-through';
+        }
+        
+        listItem.appendChild(checkbox);
+        listItem.appendChild(textSpan);
         todoListElement.appendChild(listItem);
     });
 };
 
+// Function to handle todo completion with delay
+const handleTodoCompletion = (index: number, isChecked: boolean): void => {
+    if (isChecked) {
+        // Wait 2 seconds before marking as completed
+        setTimeout(() => {
+            todosArray[index].completed = true;
+            renderTodoList();
+        }, 2000);
+    } else {
+        // Immediately mark as not completed
+        todosArray[index].completed = false;
+        renderTodoList();
+    }
+};
+
 // Function to get todos from input field
-const getTodosFromInput = (): string[] => {
+const getTodosFromInput = (): LocalTodo[] => {
     if (!todoInputElement) return [];
     
     const todoText: string = todoInputElement.value.trim();
     if (todoText !== '') {
-        return [todoText];
+        return [{
+            text: todoText,
+            completed: false,
+            id: nextId++
+        }];
     }
     return [];
 };
@@ -55,7 +94,7 @@ const getTodosFromInput = (): string[] => {
 const addNewTodo = (): void => {
     if (!todoInputElement) return;
     
-    const todosToAdd: string[] = getTodosFromInput();
+    const todosToAdd: LocalTodo[] = getTodosFromInput();
     if (todosToAdd.length > 0) {
         todosArray.push(...todosToAdd);
         todoInputElement.value = '';
@@ -63,7 +102,7 @@ const addNewTodo = (): void => {
     }
 };
 
-// Function to delete todos
+// Function to delete todos (keeping for potential future use)
 const removeTodo = (index: number): void => {
     todosArray.splice(index, 1);
     renderTodoList();
@@ -75,8 +114,16 @@ const fetchTodosFromApi = async (): Promise<void> => {
         const response: Response = await fetch('https://dummyjson.com/todos');
         const data: ApiResponse = await response.json();
         
-        // Extract todo text from API response
-        todosArray = data.todos.map((todoItem: TodoItem) => todoItem.todo);
+        // Convert API todos to our local format
+        todosArray = data.todos.map((todoItem: TodoItem) => ({
+            text: todoItem.todo,
+            completed: todoItem.completed,
+            id: todoItem.id
+        }));
+        
+        // Update nextId to avoid conflicts
+        nextId = Math.max(...todosArray.map(todo => todo.id)) + 1;
+        
         console.log("Todos fetched successfully:", todosArray);
         renderTodoList();
     } catch (error) {
